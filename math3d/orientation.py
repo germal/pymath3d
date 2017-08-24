@@ -6,7 +6,7 @@ represented internally by an orthogonal 3x3 matrix.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2016"
+__copyright__ = "Morten Lind 2012-2017"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
@@ -242,23 +242,32 @@ class Orientation(object):
         self._data[:, 1] = y_vec._data
         self._data[:, 2] = z_vec._data
 
-    def get_quaternion(self):
+    def get_unit_quaternion(self):
         """Return a quaternion representing this orientation."""
         return m3d.UnitQuaternion(self)
 
-    def set_quaternion(self, quat):
+    # Deprecated
+    get_quaternion = get_unit_quaternion
+
+    def set_unit_quaternion(self, quat):
         """Set the orientation to that of the quaternion given in
         'quat'.
         """
         self._data[:, :] = quat.orientation._data
 
-    quaternion = property(get_quaternion)
+    # Deprecated
+    set_quaternion = set_unit_quaternion
+
+    unit_quaternion = property(get_unit_quaternion)
+
+    # Deprecated
+    quaternion = unit_quaternion
 
     def get_rotation_vector(self):
         """Return a rotation vector representing this
         orientation. This is essentially the logarithm of the rotation
         matrix. """
-        return self.quaternion.rotation_vector
+        return self.unit_quaternion.rotation_vector
 
     def set_rotation_vector(self, rot_vec):
         """Set this Orientation to represent the one given in a
@@ -412,7 +421,7 @@ class Orientation(object):
         """Return the orientation distance (the angle of rotation) to
         the 'other' orientation.
         """
-        return (self.inverse * other).quaternion.ang_norm
+        return (self.inverse * other).unit_quaternion.ang_norm
 
     def invert(self):
         """In-place inversion of this orientation."""
