@@ -158,8 +158,11 @@ class Orientation(object):
 
     col_z = property(get_col_z)
 
-    def __getitem__(self, indices):
-        return self._data.__getitem__(indices)
+    def __getitem__(self, index):
+        """Return the 'index''th axis vector (column) of this orientation
+        matrix.
+        """
+        return self._data[:, index]
 
     def __eq__(self, other):
         if type(other) == Orientation:
@@ -425,7 +428,7 @@ class Orientation(object):
 
     def invert(self):
         """In-place inversion of this orientation."""
-        self._data[:, :] = self._data.transpose().copy()
+        self._data[:, :] = self._data.T
 
     def get_inverse(self):
         """Return an inverse of this orientation as a rotation."""
@@ -436,10 +439,12 @@ class Orientation(object):
     inverse = property(get_inverse)
 
     def __mul__(self, other):
-        if type(other) == Orientation:
-            return Orientation(np.dot(self._data, other._data))
-        elif type(other) == Vector:
+        if type(other) == Vector:
             return Vector(np.dot(self._data, other._data))
+        elif type(other) == Orientation:
+            return Orientation(np.dot(self._data, other._data))
+        elif type(other) == m3d.UnitQuaternion:
+            return self * other.orientation
         elif type(other) == np.ndarray and other.shape == (3,):
             return np.dot(self._data, other)
         elif type(other) == np.ndarray and other.shape == (6,):

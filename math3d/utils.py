@@ -30,7 +30,7 @@ def _deprecation_warning(msg):
 
 def set_precision(prec):
     """Set epsilon and float type"""
-    global eps, _eps, flt
+    global sqrt_eps, eps, _eps, flt
     if prec == 16:
         eps = 10 * np.finfo(np.float16).resolution
         flt = np.float16
@@ -42,6 +42,7 @@ def set_precision(prec):
         flt = np.float64
     else:
         raise Error('Supported precision (int): 16, 32, 64.')
+    sqrt_eps = np.sqrt(eps)
 
 set_precision(64)
 

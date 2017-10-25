@@ -97,8 +97,9 @@ class UnitQuaternion(object):
             raise utils.Error(
                 'Creating on type {} is not supported'
                 .format(str(type(args))))
-        if np.abs(self.norm - 1.0) > utils.eps:
-            if norm_warn:
+        err = np.abs(self.norm - 1.0)
+        if err > utils.eps:
+            if norm_warn and err > 1.0e-4:
                 print(('UnitQuaternion.__init__ : Warning : Arguments '
                        'did not constitute a unit quaternion ' +
                        '(error={:.2e}). Normalizing!')
@@ -170,26 +171,31 @@ class UnitQuaternion(object):
         if type(other) == Vector:
             # Do a rotation of the vector
             return (self * UnitQuaternion(0, other) * self.inverse)._v
-        elif type(other) in [UnitQuaternion, Quaternion]:
+        elif type(other) == UnitQuaternion:
             # Ordinary quaternion multiplication
             return UnitQuaternion(self._s * other._s - self._v * other._v,
                                   self._v.cross(other._v) +
                                   self._s * other._v + other._s * self._v)
-        elif utils.is_num_type(other):
-            return UnitQuaternion(other * self._s, other * self._v)
+        elif type(other) == m3d.Orientation:
+            return self * other.unit_quaternion
+        # elif utils.is_num_type(other):
+        #     return UnitQuaternion(other * self._s, other * self._v)
         else:
             return NotImplemented
 
     def __rmul__(self, rother):
-        """Right-multiply by number. """
-        if utils.is_num_type(rother):
-            return UnitQuaternion(rother * self._s, rother * self._v)
+        # """Right-multiply by number. """
+        # if utils.is_num_type(rother):
+        #     return UnitQuaternion(rother * self._s, rother * self._v)
+        # else:
+        return NotImplemented
 
     def __imul__(self, other):
         """In-place multiply."""
-        if utils.is_num_type(other):
-            self._s *= other
-            self._v *= other
+        if other in [m3d.Orientation, UnitQuaternion]:
+            new_quat = self * other
+            self._s = new_quat._s
+            self._v = new_quat._v
         else:
             return NotImplemented
         return self
@@ -197,7 +203,7 @@ class UnitQuaternion(object):
     def __ipow__(self, x):
         """In-place exponentiation of this quaternion to the power of
         'x'."""
-        if abs(1 - abs(self._s)) < 1e-7:
+        if abs(1 - abs(self._s)) < utils.sqrt_eps:
             self._s = utils.flt(1)
             self._v = Vector(0, 0, 0)
         else:
@@ -216,10 +222,17 @@ class UnitQuaternion(object):
         q **= x
         return q
 
+    def negate(self):
+        """In-place negation, i.e. flip between small- and large-norm
+        representation of the same rotation.
+        """
+        self._s = -self._s
+        self._v = -self._v
+
     def __neg__(self):
         """Return the negative quaternion to self."""
         q = UnitQuaternion(self)
-        q *= -1.0
+        q.negate()
         return q
 
     def get_ang_norm(self, shortest=True):
@@ -359,7 +372,7 @@ class UnitQuaternion(object):
                 self._v[v] = (M[u, v] + M[v, u]) * tworinv
                 self._v[w] = (M[w, u] + M[u, w]) * tworinv
         if positive and self._s < 0:
-            self *= -1.0
+            self.negate()
         self.normalize()
 
     orientation = property(get_orientation, set_orientation)
@@ -411,9 +424,9 @@ class UnitQuaternion(object):
 
     def invert(self):
         """In-place inversion of this quaternion. """
-        n2 = self.norm_squared
+        # n2 = self.norm_squared
         self.conjugate()
-        self *= 1 / n2
+        # self *= 1 / n2
 
     def get_inverse(self):
         """Return an inverse of this quaternion."""
