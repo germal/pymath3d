@@ -153,4 +153,4 @@ class FootedWrench(object):
     changes, the force and moment vectors then transforms as free
     vectors and the foot point transforms as a position vector."""
     def __init__(self, *args, **kwargs):
-        pass
+        raise NotImplemented

@@ -385,6 +385,9 @@ class Vector(object):
 Vector.ex = Vector.e0 = Vector(1, 0, 0)
 Vector.ey = Vector.e1 = Vector(0, 1, 0)
 Vector.ez = Vector.e2 = Vector(0, 0, 1)
+Vector.unit_vectors = [Vector.ex,
+                       Vector.ey,
+                       Vector.ez]
 
 
 def random_unit_vector():
