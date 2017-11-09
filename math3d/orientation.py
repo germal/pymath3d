@@ -182,9 +182,23 @@ class Orientation(object):
         sq_sum = (vec_x * vec_y)**2
         sq_sum += (vec_y * vec_z)**2
         sq_sum += (vec_z * vec_x)**2
+        sq_sum += np.abs(1 - vec_x * vec_x)
+        sq_sum += np.abs(1 - vec_y * vec_y)
+        sq_sum += np.abs(1 - vec_z * vec_z)
         return np.sqrt(sq_sum)
 
     repr_error = property(get_repr_error)
+
+    def orthonormalize(self):
+        """Perform an in-place Gram-Schmidt."""
+        # Trust the x-vector but normalize
+        self._data[:, 0] /= np.linalg.norm(self._data[:, 0])
+        # Form y-vector by removing x-projection and normalizing
+        self._data[:, 1] -= np.dot(self._data[:, 1], self._data[:, 0]) * self._data[:, 0]
+        self._data[:, 1] /= np.linalg.norm(self._data[:, 1])
+        # Form z-vector by cross product #  and normalization
+        self._data[:, 2] = np.cross(self._data[:, 0], self._data[:, 1])
+        # self._data[:, 2] /= np.linalg.norm(self._data[:, 2])
 
     # def renormalize(self):
     #     """Correct the axis vectors by a Gram-Schmidt procedure."""
@@ -474,7 +488,26 @@ class Orientation(object):
         """
         return self._data.copy()
 
-    array = property(get_array)
+    def set_array(self, array, check=True):
+        """Set the orientation matrix data by the nine values in the doubly
+        iterable 'array'.
+        """
+        if check:
+            if len(array) != 3:
+                raise utils.Error(
+                    'Setting the value by the "array" property needs exactly'
+                    + ' three rows. ({} were given)'.format(len(array)))
+            for row in array:
+                if len(row) != 3:
+                    raise utils.Error(
+                        'Setting the values of a row in the "array" property '
+                        + 'needs exactly three values.({} were given)'
+                        .format(len(row)))
+        self._data[:] = array
+        if check:
+            self.orthonormalize()
+
+    array = property(get_array, set_array)
 
     def get_array_ref(self):
         """Return a reference to the (3,3) ndarray, which is the
@@ -712,3 +745,17 @@ def _test_from_nn():
     o = Orientation.new_from_xz((1, 0, 0), (1, 0, 1))
     if o.vec_z != m3d.Vector.ez or o.vec_x != m3d.Vector.ex:
         print('Test-Error in new_from_xz')
+
+
+def _test_array_property():
+    o = Orientation()
+    try:
+        o.array = [[1, 1, 1], [0, 0, 0], [2]]
+    except utils.Error as e:
+        print(e)
+    o.array = np.arange(9).reshape((3, 3))
+    print(o.array)
+    print(o.repr_error)
+    o.orthonormalize()
+    print(o.repr_error)
+    

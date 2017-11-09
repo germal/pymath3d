@@ -33,8 +33,8 @@ class OrigoWrench(object):
         * 'f' and 'm', either are optional, each an iterable of three
           floats.
 
-        'args' may contain: 
-        
+        'args' may contain:
+
         * One iterable of six floats. The first three are taken as the
           force, and the last three as the moment.
 
@@ -46,7 +46,7 @@ class OrigoWrench(object):
         if len(args) == 0 and len(kwargs) == 0:
             # Default constructor
             self._force = m3d.Vector()
-            self._moment = m3d.Vector()            
+            self._moment = m3d.Vector()
         elif 'f' in kwargs or 'm' in kwargs:
             self._force = m3d.Vector(kwargs.get('f', m3d.Vector()))
             self._moment = m3d.Vector(kwargs.get('m', m3d.Vector()))
@@ -61,9 +61,30 @@ class OrigoWrench(object):
             self._moment = m3d.Vector(args[1])
         else:
             raise Exception(
-                self.__class__.__name__ + 
-                'Could not construct on given arguments: *args=' + 
+                self.__class__.__name__ +
+                'Could not construct on given arguments: *args=' +
                 str(args) + ' *kwargs=' + str(kwargs))
+
+    def get_array(self):
+        """Return a simple 6-array holding the values of the force and moment
+        appended, in that order.
+        """
+        return np.append(self._force.array, self._moment.array)
+
+    def set_array(self, array):
+        """Set the wrench by six values in the iterable 'array'. The first
+        three values must specify force, the last three must specify
+        moment
+        """
+        if len(array) != 6:
+            raise Exception(
+                self.__class__.__name__ +
+                'Setting the value by the "array" property needs exactly'
+                + ' six values.({} were given)'.format(len(array)))
+        self._force = m3d.Vector(array[:3])
+        self._moment = m3d.Vector(array[3:])
+
+    array = property(get_array, set_array)
 
     def equivalent(self, ref):
         """Compute the eqivalent wrench at 'ref'. If 'ref' is a
@@ -82,15 +103,15 @@ class OrigoWrench(object):
             f_n = self._force
             m_n = self._moment - ref.cross(f_n)
             return OrigoWrench(f=f_n, m=m_n)
-        elif type(ref) == m3d.Transform:            
+        elif type(ref) == m3d.Transform:
             # 'ref' is a transformation to the new coordinate system,
             # at the origo of whom the equivalent wrench is sought, in
             # new coordinates.
             m = self._moment
-            f_n = ref.orient * self._force 
+            f_n = ref.orient * self._force
             m_n = ref.orient * self._moment + ref.pos.cross(f_n)
             return OrigoWrench(f=f_n, m=m_n)
-    
+
     def __rmul__(self, left):
         """Handle left operator."""
         if type(left) in [m3d.Transform, m3d.Vector]:
@@ -99,7 +120,7 @@ class OrigoWrench(object):
             # Perform a reorientation of the wrench, as observed from
             # a coordinate system with the orientation transform given
             # in 'left'
-            f_n = left * self._force 
+            f_n = left * self._force
             m_n = left * self._moment
             return OrigoWrench(f=f_n, m=m_n)
 
@@ -142,7 +163,7 @@ class OrigoWrench(object):
     def __repr__(self):
         """String represenstation of the wrench."""
         return ('<{} f=[{:.3f}, {:.3f}, {:.3f}] m=[{:.3f}, {:.3f}, {:.3f}]>'
-                .format(*([self.__class__.__name__] + 
+                .format(*([self.__class__.__name__] +
                           self._force.list + self._moment.list)))
 
 

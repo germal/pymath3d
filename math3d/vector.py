@@ -267,7 +267,17 @@ class Vector(object):
         of the Vector."""
         return self._data.copy()
 
-    array = property(get_array)
+    def set_array(self, array, check=True):
+        """Set the vector by three values in the iterable 'array'.
+        """
+        if check and len(array) != 3:
+            raise Exception(
+                self.__class__.__name__ +
+                'Setting the value by the "array" property needs exactly'
+                + ' three values. ({} were given)'.format(len(array)))
+        self._data[:] = array
+
+    array = property(get_array, set_array)
 
     def get_array_ref(self):
         """Return a reference to the (3,) ndarray, which is the
