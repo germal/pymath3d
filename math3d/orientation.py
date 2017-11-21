@@ -430,7 +430,7 @@ class Orientation(object):
     def get_ang_norm(self):
         """Return the angular norm, i.e. the angular rotation, of
         this orientation."""
-        return 2*np.arccos(self._s)
+        return self.axis_angle[1]
 
     ang_norm = property(get_ang_norm)
 
@@ -588,18 +588,24 @@ class Orientation(object):
 
     @classmethod
     def new_vec_to_vec(cls, from_vec, to_vec):
-        """Factory for a new orientation which is the rotation in the
-        signed angle 'angle' around the z-direction which rotates
-        'from_vec' to 'to_vec'."""
+        """Factory for a new orientation which is the minimal rotation which
+        rotates 'from_vec' to 'to_vec'. Technically the axis-angle
+        that can be computed for the two vectors.
+        """
+        # Ensure that the vectors are m3d unit vectors
+        from_vec = m3d.Vector(from_vec).normalized
+        to_vec = m3d.Vector(to_vec).normalized
+        # Angle between the vectords
         angle = from_vec.angle(to_vec)
-        if angle <= 1.0e-8:
+        # Consider cases
+        if angle <= utils.sqrt_eps:
             # // Identity
             return Orientation()
-        elif angle < np.pi-1.0e-8:
+        elif angle < np.pi - utils.sqrt_eps:
             # // Regular, minimal rotation
             return Orientation(angle * from_vec.cross(to_vec).normalized)
         else:
-            # // Find a suitable rotation axis
+            # // Find any suitable rotation axis
             x_angle = Vector.ex.angle(from_vec)
             if x_angle > 1e-3 and x_angle < np.pi - 1.0e-3:
                 return Orientation(angle *
