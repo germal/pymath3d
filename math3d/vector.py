@@ -5,7 +5,7 @@ Module implementing the Vector class.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2016"
+__copyright__ = "Morten Lind 2012-2017"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
