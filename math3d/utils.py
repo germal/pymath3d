@@ -21,7 +21,7 @@ import numpy as np
 
 
 def _deprecation_warning(msg):
-    f = inspect.stack()[2]
+    f = inspect.stack()[1]
     # print(f)
     print(('math3d: {} @ {} in {}:\n\tA deprecated method was invoked. ')
           .format(f[1], f[2], f[3]) +

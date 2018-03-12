@@ -171,7 +171,7 @@ class Vector(object):
             costheta = -1
         return np.arccos(costheta)
 
-    def signed_angle(self, other, ref_vec=None):
+    def signed_angle_to(self, other, ref_vec=None):
         """With default reference rotation vector as Z-axis (if
         'ref_vec' == None), compute the signed angle of rotation from
         self to 'other'.
@@ -185,6 +185,10 @@ class Vector(object):
             if xprod.z < 0:
                 theta = -theta
         return theta
+
+    def signed_angle(self, other, ref_vec=None):
+        utils._deprecation_warning('signed_angle_to')
+        return self.signed_angle_to(other, ref_vec=None)
 
     def get_length(self):
         """Return the Euclidean length."""
@@ -200,9 +204,9 @@ class Vector(object):
 
     def normalize(self):
         """In-place normalization of this Vector."""
-        l = self.length
-        if l != 1.0:
-            self._data = self._data / l
+        length = self.length
+        if length != 1.0:
+            self._data = self._data / length
 
     def get_normalized(self):
         """Return a normalized Vector with same direction as this
@@ -391,6 +395,7 @@ class Vector(object):
         v.normalize()
         return v
 
+
 # Unit Vectors
 Vector.ex = Vector.e0 = Vector(1, 0, 0)
 Vector.ey = Vector.e1 = Vector(0, 1, 0)
@@ -420,7 +425,7 @@ def _test_construction():
 def _test_signed_angle():
     v = Vector(1, 2, 3)
     u = Vector(3, 1, 2)
-    print(v.signed_angle(u))
+    print(v.signed_angle_to(u))
     return True
 
 
@@ -440,7 +445,7 @@ def _test_rops():
     if v != 2 * v_origin:
         return False
     u = Vector(3, 1, 2)
-    print(v.signed_angle(u))
+    print(v.signed_angle_to(u))
     return True
 
 
