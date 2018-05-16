@@ -40,9 +40,13 @@ class SO3Interpolation(object):
         self._qend = UnitQuaternion(end)
         self._qstart.normalize()
         self._qend.normalize()
-        if shortest and (self._qstart.dist(self._qend) >
-                         self._qstart.dist(-self._qend)):
-            self._qend = -self._qend
+        if shortest is not None:
+            if shortest and (self._qstart.dist(self._qend) >
+                             self._qstart.dist(-self._qend)):
+                self._qend = -self._qend
+            elif not shortest and (self._qstart.dist(self._qend) <
+                                   self._qstart.dist(-self._qend)):
+                self._qend = -self._qend
         self._qstartconj = self._qstart.conjugated.normalized
         self._qstartconjqend = (self._qstartconj * self._qend).normalized
 

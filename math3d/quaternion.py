@@ -5,7 +5,7 @@ Module implementing the Quaternion class.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2015"
+__copyright__ = "Morten Lind 2012-2018"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
@@ -238,13 +238,18 @@ class UnitQuaternion(object):
     def get_ang_norm(self, shortest=True):
         """Return the angular norm, i.e. the angular rotation, of this
         quaternion. If 'shortest' is True, the default, the shortest
-        distance is returned, i.e. the minimal geodesic path length
+        norm is returned, i.e. the minimal geodesic path length
         from the unit element to this unit quaternion.
         """
-        if shortest:
-            return 2*min(np.arccos(-self._s), np.arccos(self._s))
-        else:
+        if shortest is None:
             return 2*np.arccos(self._s)
+        else:
+            if shortest:
+                # Return the long rotation angle
+                return 2*min(np.arccos(-self._s), np.arccos(self._s))
+            else:
+                # Return the long rotation angle
+                return 2*max(np.arccos(-self._s), np.arccos(self._s))
 
     ang_norm = property(get_ang_norm)
 
@@ -252,7 +257,10 @@ class UnitQuaternion(object):
         """Compute the rotation angle distance to the 'other' quaternion. If
         'shortest' is True, the default, the shortest distance is
         returned, i.e. the minimal geodesic path length from the
-        'other' unit quaternion to this unit quaternion.
+        'other' unit quaternion to this unit quaternion. 'shortest'
+        may be False, in which case the longest angular distance is
+        returned. If 'shortest' is None, the natural angular distance
+        is computed.
         """
         return (self.conjugated * other).get_ang_norm(shortest)
 
@@ -267,16 +275,15 @@ class UnitQuaternion(object):
         'other' quaternion."""
         return np.sqrt(self.dist_squared(other))
 
-    def get_axis_angle(self, shortest=True):
-        """Return an '(axis, angle)' pair representing the orientation
-        of this quaternion.
+    def get_axis_angle(self):
+        """Return an '(axis, angle)' pair representing the orientation of this
+        quaternion. Ref
+        https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Recovering_the_axis-angle_representation
         """
-        alpha = self.get_ang_norm(shortest)
-        if alpha != 0:
-            n = self._v / np.sin(alpha / 2)
-        else:
-            n = Vector()
-        return (n, alpha)
+        vlen = self._v.length
+        axis = self._v / vlen
+        angle = 2 * np.arctan2(vlen, self._s)
+        return (axis, angle)
 
     def set_axis_angle(self, axisangle):
         """Set this quaternion to the equivalent of the given axis
@@ -293,14 +300,11 @@ class UnitQuaternion(object):
 
     axis_angle = property(get_axis_angle, set_axis_angle)
 
-    def get_rotation_vector(self, shortest=True):
+    def get_rotation_vector(self):
         """Return a rotation vector representing the rotation of this
         quaternion."""
-        n, alpha = self.get_axis_angle(shortest)
-        if alpha != 0.0:
-            return (alpha * n)._data
-        else:
-            return n._data
+        axis, angle = self.axis_angle
+        return (angle * axis)._data
 
     def set_rotation_vector(self, rot_vec):
         """Set this quaternion to the equivalent of the given
@@ -477,5 +481,13 @@ class Quaternion(UnitQuaternion):
 
 
 def _test():
+    print('Here should come a norm-warning:')
     UnitQuaternion(1, 2, 3, 4, norm_warn=True)
+    print('Here should be *no* norm-warning:')
     UnitQuaternion(1, 2, 3, 4, norm_warn=False)
+    print('Done')
+    print('Test for closeness of rotation vectors (logarithm).')
+    q = UnitQuaternion(m3d.Vector(0, 0, -1/2 * np.pi))
+    p = UnitQuaternion(m3d.Vector(0, 0, 3/2 * np.pi))
+    assert(np.all(np.isclose(q.rotation_vector,p.rotation_vector))
+           or np.all(np.isclose(q.rotation_vector, (-p).rotation_vector)))
