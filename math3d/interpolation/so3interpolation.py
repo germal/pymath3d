@@ -33,9 +33,12 @@ class SO3Interpolation(object):
             return self.message
 
     def __init__(self, start, end, shortest=True):
-        """Initialise an SO(3) interpolation from orientation 'start'
-        to orientation 'end'. If 'shortest' is true, the shortest
-        rotation path is chosen, if false, it is indeterminate."""
+        """Initialise an SO(3) interpolation from orientation 'start' to
+        orientation 'end'. If 'shortest' is True the shortest rotation
+        path is chosen, if False the long rotation is used, and if
+        None it is indeterminate, given by the UnitQuaternions
+        constructed over 'start' and 'end'.
+        """
         self._qstart = UnitQuaternion(start)
         self._qend = UnitQuaternion(end)
         self._qstart.normalize()

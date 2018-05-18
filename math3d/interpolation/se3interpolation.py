@@ -37,8 +37,11 @@ class SE3Interpolation(SO3Interpolation, R3Interpolation):
 
     def __init__(self, trf0, trf1, shortest=True):
         """Initialise an SE(3) interpolation from transform 'trf0' to
-        transform 'trf1'. If 'shortest' is true, the shortest rotation
-        path is chosen, if false, it is indeterminate."""
+        transform 'trf1'. If 'shortest' is True, the shortest rotation
+        path is chosen, if False, the long rotation is used, and if
+        None it is indeterminate, given by the UnitQuaternions being
+        constructed from the transforms.
+        """
         self._trf0 = trf0
         self._trf1 = trf1
         SO3Interpolation.__init__(self, self._trf0.orient,
