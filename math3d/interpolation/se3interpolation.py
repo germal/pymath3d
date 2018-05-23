@@ -5,19 +5,18 @@ Module implementing the SE(3) interpolator class.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2009-2015"
+__copyright__ = "Morten Lind 2009-2018"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
 __email__ = "morten@lind.dyndns.dk"
 __status__ = "Production"
 
-import numpy as np
-
 from ..transform import Transform
 from .. import utils
 from .so3interpolation import SO3Interpolation
 from .r3interpolation import R3Interpolation
+
 
 class SE3Interpolation(SO3Interpolation, R3Interpolation):
     """A class for object representing a linear interpolation in task
@@ -39,7 +38,7 @@ class SE3Interpolation(SO3Interpolation, R3Interpolation):
         """Initialise an SE(3) interpolation from transform 'trf0' to
         transform 'trf1'. If 'shortest' is True, the shortest rotation
         path is chosen, if False, the long rotation is used, and if
-        None it is indeterminate, given by the UnitQuaternions being
+        None it is indeterminate, given by the Versor objects being
         constructed from the transforms.
         """
         self._trf0 = trf0
@@ -58,6 +57,7 @@ class SE3Interpolation(SO3Interpolation, R3Interpolation):
                                  'It was {}.'.format(time))
         return Transform(self.orient(time, False), self.pos(time, False))
 
+
 TaskLinearInterpolation = SE3Interpolation
 EuclideanInterpolation = SE3Interpolation
 
@@ -75,8 +75,3 @@ def _test():
     o1 = Orientation()
     o1.set_to_z_rotation(pi / 2)
     tint = SE3Interpolation(Transform(o0, p0), Transform(o1, p1))
-
-
-if __name__ == '__main__':
-    import readline
-    readline.parse_and_bind("tab: complete")

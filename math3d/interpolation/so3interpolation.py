@@ -5,7 +5,7 @@ Module implementing the SO(3) interpolator class; Slerp.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2009-2015"
+__copyright__ = "Morten Lind 2009-2018"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
@@ -15,7 +15,7 @@ __status__ = "Production"
 import numpy as np
 
 from ..orientation import Orientation
-from ..quaternion import UnitQuaternion
+from ..quaternion import Versor, UnitQuaternion
 from .. import utils
 
 
@@ -36,11 +36,11 @@ class SO3Interpolation(object):
         """Initialise an SO(3) interpolation from orientation 'start' to
         orientation 'end'. If 'shortest' is True the shortest rotation
         path is chosen, if False the long rotation is used, and if
-        None it is indeterminate, given by the UnitQuaternions
+        None it is indeterminate, given by the Versor objects
         constructed over 'start' and 'end'.
         """
-        self._qstart = UnitQuaternion(start)
-        self._qend = UnitQuaternion(end)
+        self._qstart = Versor(start)
+        self._qend = Versor(end)
         self._qstart.normalize()
         self._qend.normalize()
         if shortest is not None:
@@ -54,10 +54,10 @@ class SO3Interpolation(object):
         self._qstartconjqend = (self._qstartconj * self._qend).normalized
 
     def __call__(self, t):
-        return self.quat(t)
+        return self.versor(t)
 
-    def quat(self, time, checkrange=True):
-        """Return the quaternion in the slerp at 'time'; in [0,1]."""
+    def versor(self, time, checkrange=True):
+        """Return the versor of the slerp at 'time'; in [0,1]."""
         if checkrange:
             time = utils.flt(time)
             if time < 0.0 or time > 1.0:
@@ -67,7 +67,7 @@ class SO3Interpolation(object):
 
     def orient(self, time, checkrange=True):
         """Return the orientation in the slerp at 'time'; in [0,1]. """
-        return self.quat(time, checkrange).orientation
+        return self.versor(time, checkrange).orientation
 
 
 SLERP = SO3Interpolation
@@ -82,12 +82,7 @@ def _test():
     o.set_to_x_rotation(pi / 2)
     o1 = Orientation()
     o1.set_to_z_rotation(pi / 2)
-    q = UnitQuaternion(o)
-    q1 = UnitQuaternion(o1)
+    q = Versor(o)
+    q1 = Versor(o1)
     qsl = SO3Interpolation(q, q1)
     osl = SO3Interpolation(o, o1)
-
-
-if __name__ == '__main__':
-    import readline
-    readline.parse_and_bind("tab: complete")

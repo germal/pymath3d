@@ -6,7 +6,7 @@ represented internally by an orthogonal 3x3 matrix.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2017"
+__copyright__ = "Morten Lind 2012-2018"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
@@ -15,7 +15,7 @@ __status__ = "Production"
 
 import numpy as np
 
-# Circular dependencies prevents direct import of Quaternion, hence
+# Circular dependencies prevents direct import of Versor, hence
 # global addressing.
 import math3d as m3d
 
@@ -51,7 +51,7 @@ class Orientation(object):
 
         * An Orientation.
 
-        * A UnitQuaternion.
+        * A Versor (UnitQuaternion).
 
         * Three Vectors or numpy arrays of shape (3,) interpreted as
           columns of the matrix.
@@ -66,7 +66,7 @@ class Orientation(object):
             arg = args[0]
             if type(arg) == Orientation:
                 self._data = arg.array
-            elif type(arg) == m3d.UnitQuaternion:
+            elif type(arg) in (m3d.Versor, m3d.UnitQuaternion):
                 self._data = arg.orientation._data
             elif type(arg) == Vector:
                 # Interpret as a rotation vector
@@ -259,32 +259,35 @@ class Orientation(object):
         self._data[:, 1] = y_vec._data
         self._data[:, 2] = z_vec._data
 
-    def get_unit_quaternion(self):
-        """Return a quaternion representing this orientation."""
-        return m3d.UnitQuaternion(self)
+    def get_versor(self):
+        """Return a versor representing this orientation."""
+        return m3d.Versor(self)
 
     # Deprecated
+    get_unit_quaternion = get_versor
     get_quaternion = get_unit_quaternion
 
-    def set_unit_quaternion(self, quat):
-        """Set the orientation to that of the quaternion given in
-        'quat'.
+    def set_versor(self, vers):
+        """Set the orientation to that of the versor given in
+        'vers'.
         """
-        self._data[:, :] = quat.orientation._data
+        self._data[:, :] = vers.orientation._data
 
     # Deprecated
+    set_unit_quaternion = set_versor
     set_quaternion = set_unit_quaternion
 
-    unit_quaternion = property(get_unit_quaternion)
+    versor = property(get_versor, set_versor)
 
     # Deprecated
+    unit_quaternion = versor
     quaternion = unit_quaternion
 
     def get_rotation_vector(self):
         """Return a rotation vector representing this
         orientation. This is essentially the logarithm of the rotation
         matrix. """
-        return self.unit_quaternion.rotation_vector
+        return self.versor.rotation_vector
 
     def set_rotation_vector(self, rot_vec):
         """Set this Orientation to represent the one given in a
@@ -304,7 +307,7 @@ class Orientation(object):
     def get_axis_angle(self):
         """Return an (axis,angle) pair representing the equivalent
         orientation."""
-        return m3d.UnitQuaternion(self).axis_angle
+        return m3d.Versor(self).axis_angle
 
     def set_axis_angle(self, ax_ang):
         """Set this orientation to the equivalent to rotation of
@@ -438,7 +441,7 @@ class Orientation(object):
         """Return the orientation distance (the angle of rotation) to
         the 'other' orientation.
         """
-        return (self.inverse * other).unit_quaternion.ang_norm
+        return (self.inverse * other).versor.ang_norm
 
     def invert(self):
         """In-place inversion of this orientation."""
@@ -457,7 +460,7 @@ class Orientation(object):
             return Vector(np.dot(self._data, other._data))
         elif type(other) == Orientation:
             return Orientation(np.dot(self._data, other._data))
-        elif type(other) == m3d.UnitQuaternion:
+        elif type(other) in (m3d.Versor, m3d.UnitQuaternion):
             return self * other.orientation
         elif type(other) == np.ndarray and other.shape == (3,):
             return np.dot(self._data, other)

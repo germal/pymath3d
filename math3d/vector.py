@@ -5,7 +5,7 @@ Module implementing the Vector class.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2017"
+__copyright__ = "Morten Lind 2012-2018"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
@@ -128,7 +128,7 @@ class Vector(object):
 
     def __eq__(self, other):
         if type(other) == Vector:
-            return np.sum((self._data - other._data) ** 2) < utils.eps
+            return np.allclose(self._data, other._data)
         else:
             return NotImplemented
 
@@ -359,9 +359,12 @@ class Vector(object):
     def __truediv__(self, other):
         """Division with a scalar, 'other'. """
         if utils.is_num_type(other):
+            print('Other: ', other)
+            if np.isclose(other, 0.0):
+                raise ZeroDivisionError('In division of vector by scalar')            
             return Vector(1.0 / other * self._data)
         else:
-            raise utils.Error('__rdiv__ : Could not divide by non-number')
+            raise utils.Error('__truediv__ : Could not divide by non-number')
     __div__ = __truediv__
 
     def __add__(self, other):

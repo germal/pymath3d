@@ -11,7 +11,7 @@ __email__ = "morten@lind.dyndns.dk"
 __status__ = "Production"
 
 from .utils import set_precision
-from .quaternion import UnitQuaternion, Quaternion
+from .quaternion import Quaternion, Versor, UnitQuaternion
 from .orientation import Orientation
 from .orientation_computer import OrientationComputer
 from .vector import Vector

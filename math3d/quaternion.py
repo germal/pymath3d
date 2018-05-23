@@ -22,7 +22,249 @@ from . import utils
 from .vector import Vector
 
 
-class UnitQuaternion(object):
+class Quaternion(object):
+
+    class Error(Exception):
+        """Exception class."""
+        def __init__(self, message):
+            self.message = message
+            Exception.__init__(self, self.message)
+
+        def __repr__(self):
+            return self.message
+
+    def __init__(self, *args, **kwargs):
+        if len(args) == 0:
+            self._s = 1
+            self._v = m3d.Vector(0, 0, 0)
+        if len(args) == 1:
+            if type(args[0]) in [Quaternion]:
+                self._s = args[0]._s
+                self._v = args[0]._v.copy()
+        elif len(args) == 2:
+            if utils.is_num_type(args[0]) and type(args[1]) == Vector:
+                # Interpret as s, v
+                self._s = utils.flt(args[0])
+                self._v = args[1].copy()
+        elif len(args) == 4:
+            self._s = args[0]
+            self._v = Vector(args[1:])
+
+    def __getattr__(self, name):
+        if name == 's':
+            return self._s
+        elif name == 'x':
+            return self._v.x
+        elif name == 'y':
+            return self._v.y
+        elif name == 'z':
+            return self._v.z
+        else:
+            raise AttributeError(('Attribute "{}" not found in class "{}".')
+                                 .format(name, self.__class__.__name__))
+
+    def __setattr__(self, name, val):
+        object.__setattr__(self, name, val)
+
+    def __getitem__(self, index):
+        if index == 0:
+            return self._s
+        else:
+            return self._v[index-1]
+
+    def __repr__(self):
+        return '<{}: [{:.5f}, ({:.5f}, {:.5f}, {:.5f})]>'.format(
+            self.__class__.__name__, self._s, *self._v._data)
+
+    def __copy__(self):
+        """Copy method for creating a copy of this Quaternion."""
+        return self.__class__(self)
+
+    def __deepcopy__(self, memo):
+        return self.__copy__()
+
+    def copy(self, other=None):
+        """Copy data from 'other' to self. If no argument given,
+        i.e. 'other==None', return a copy of this Quaternion."""
+        if other is None:
+            return self.__class__(self)
+        else:
+            self._s = other._s
+            self._v = other._v.copy()
+
+    def __eq__(self, other):
+        return np.isclose(self._s, other._s) and self._v == other._v
+    
+    def get_vector_part(self):
+        """Return a copy of the vector part of the versor."""
+        return self._v.copy()
+
+    vector_part = property(get_vector_part)
+
+    def get_scalar_part(self):
+        """Return the scalar part of the versor."""
+        return self._s
+
+    scalar_part = property(get_scalar_part)
+
+    def __mul__(self, other):
+        """Multiplication of this with an 'other' Quaternion or Versor, or
+        with a scalar.
+        """
+        if isinstance(other, Quaternion):
+            return Quaternion(self._s*other._s - self._v*other._v,
+                               self._v.cross(other._v)
+                               + self._s*other._v + other._s*self._v)
+        elif utils.is_num_type(other):
+            return Quaternion(other*self._s, other*self._v)
+        else:
+            return NotImplemented
+
+    def __rmul__(self, rother):
+        # """Right-multiply by Versor or scalar. """
+        if utils.is_num_type(rother):
+            return self.__class__(rother * self._s, rother * self._v)
+        else:
+            return NotImplemented
+
+    def __imul__(self, other):
+        """In-place multiply."""
+        new_quat = self * other
+        self._s = new_quat._s
+        self._v = new_quat._v
+        return self
+
+    def __ipow__(self, x):
+        """In-place exponentiation of this versor to the power of
+        'x'."""
+        # if abs(1 - abs(self._s)) < utils.sqrt_eps:
+        #     self._s = utils.flt(1)
+        #     self._v = Vector(0, 0, 0)
+        # else:
+        #     theta = np.arccos(self._s)
+        #     sintheta = np.sin(theta)
+        #     logv = theta / sintheta * self._v
+        #     alpha = x * logv.length
+        #     v = logv.normalized
+        #     self._s = np.cos(alpha)
+        #     self._v = np.sin(alpha) * v
+        theta = x * np.arccos(self._s/self.norm)
+        n = self._v.normalized
+        norm = self.norm ** x
+        self._s = norm * np.cos(theta)
+        self._v = norm * n * np.sin(theta)
+        return self
+
+    def __pow__(self, x):
+        """Return this quaternion to the power of 'x'."""
+        q = self.copy()
+        q **= x
+        return q
+
+    def negate(self):
+        """In-place negation, i.e. flip between small- and large-norm
+        representation of the same rotation.
+        """
+        self._s = -self._s
+        self._v = -self._v
+
+    def __neg__(self):
+        """Return the negative of this versor."""
+        q = self.__class__(self)
+        q.negate()
+        return q
+
+    def get_norm(self):
+        """Return the usual quaternion norm."""
+        return np.sqrt(self.norm_squared)
+
+    norm = property(get_norm)
+
+    def get_norm_squared(self):
+        """Return the square of the usual quaternion norm."""
+        return self._s**2 + self._v.length_squared
+
+    norm_squared = property(get_norm_squared)
+
+    def conjugate(self):
+        """In-place conjugation of this quaternion."""
+        self._v = -self._v
+
+    def get_conjugated(self):
+        """Return a quaternion which is the conjugated of this
+        quaternion.
+        """
+        qc = self.copy()
+        qc.conjugate()
+        return qc
+
+    conjugated = property(get_conjugated)
+
+    def normalize(self):
+        """Normalize this versor. """
+        n = self.norm
+        if abs(n) < 1e-10:
+            self._s = utils.flt(1)
+            self._v = Vector(0.0, 0.0, 0.0)
+        else:
+            ninv = 1.0 / n
+            self._s *= ninv
+            self._v *= ninv
+
+    def get_normalized(self):
+        """Return a normalised version of this quaternion. """
+        q = self.copy()
+        q.normalize()
+        return q
+
+    normalized = property(get_normalized)
+
+    def invert(self):
+        """In-place inversion of this quaternion. """
+        # n2 = self.norm_squared
+        self.conjugate()
+        self *= 1 / self.norm_squared
+        # self *= 1 / n2
+
+    def get_inverse(self):
+        """Return an inverse of this quaternion."""
+        qi = self.copy()
+        qi.invert()
+        return qi
+
+    inverse = property(get_inverse)
+
+    def get_array(self):
+        """Return an ndarray with the fundamental data. The layout is as
+        described by the list property.
+        """
+        return np.array(self.list)
+
+    array = property(get_array)
+
+    def get_list(self):
+        """Return the fundamental data as a list. The scalar part is placed in
+        the first element, at index 0, and the vector data at the
+        remainder, slice [1:].
+        """
+        return [self._s]+self._v.list
+
+    list = property(get_list)
+
+    def get_matrix(self):
+        """Return a 4x4 matrix representation of the UnitQuaternion. See
+        http://en.wikipedia.org/wiki/Quaternion#Matrix_representations.
+        """
+        a, b, c, d = self._s, self._v.x, self._v.y, self._v.z
+        return np.array([[a, b, c, d],
+                         [-b, a, -d, c],
+                         [-c, d, a, -b],
+                         [-d, -c, b, a]])
+
+    matrix = property(get_matrix)
+
+
+class Versor(Quaternion):
     """UnitQuaternion class."""
 
     class Error(Exception):
@@ -35,10 +277,10 @@ class UnitQuaternion(object):
             return self.message
 
     def __init__(self, *args, **kwargs):
-        """Create a quaternion. Args may be () for default
+        """Create a versor. Args may be () for default
         constructor; (Orientation) for createing a quaternion
-        representing the given orientation; (UnitQuaternion) for a copy
-        constructor, (s,x,y,z) or (s,Vector) for the direct quaternion
+        representing the given orientation; (Versor) for a copy
+        constructor, (s,x,y,z) or (s,Vector) for the direct versor
         data; (Vector) for creating the equivalent to a rotation
         vector; or (Vector, angle) for creating the equivalent of axis
         angle. A named option 'norm_warn' is supported as a kwargs and
@@ -46,30 +288,30 @@ class UnitQuaternion(object):
         tacitly.
         """
         norm_warn = kwargs.get('norm_warn', True)
-        self._s = utils.flt(1.0)
-        self._v = Vector()
+        self._s = utils.flt(0.0)
+        self._v = Vector(1, 0, 0)
         if len(args) == 0:
             # Default constructor
             pass
         elif len(args) == 1:
-            # Try with orientation or quaternion
+            # Try with orientation or versor
             if type(args[0]) == m3d.Orientation:
                 self.orientation = args[0]
             # Try with rotation vector
             elif type(args[0]) == Vector:
                 self.rotation_vector = args[0]
             # Copy constructor
-            elif type(args[0]) in [UnitQuaternion, Quaternion]:
+            elif type(args[0]) in [Versor, UnitQuaternion]:
                 self._s = args[0]._s
                 self._v = args[0]._v.copy()
             elif type(args[0]) in (list, tuple, np.ndarray):
                 raise utils.Error(
-                    'A UnitQuaternion can not be constructed on a list, ' +
+                    'A Versor can not be constructed on a list, ' +
                     'a tuple, or an np.ndarray. Was given "{}".'
                     .format(args[0]))
             else:
                 raise utils.Error(
-                    'Unknown argument given for UnitQuaternion constructor: ' +
+                    'Unknown argument given for Versor constructor: ' +
                     '"{}".'.format(args[0]))
         elif len(args) == 2:
             # Test for (axis, angle) and (s, v) determined by order
@@ -84,7 +326,7 @@ class UnitQuaternion(object):
                 self.axis_angle = (axis, ang)
             else:
                 raise utils.Error(
-                    'Unknown arguments given for UnitQuaternion constructor' +
+                    'Unknown arguments given for Versor constructor' +
                     ': "{}".'.format(args[0]))
         elif len(args) == 3 and np.all(np.isreal(args)):
             # Assume three components of a rotation vector
@@ -100,146 +342,63 @@ class UnitQuaternion(object):
         err = np.abs(self.norm - 1.0)
         if err > utils.eps:
             if norm_warn and err > 1.0e-4:
-                print(('UnitQuaternion.__init__ : Warning : Arguments '
-                       'did not constitute a unit quaternion ' +
+                print(('Versor.__init__ : Warning : Arguments '
+                       'did not constitute a versor ' +
                        '(error={:.2e}). Normalizing!')
                       .format(self.norm-1))
             self.normalize()
 
-    def __getattr__(self, name):
-        if name == 's':
-            return self._s
-        elif name == 'x':
-            return self._v.x
-        elif name == 'y':
-            return self._v.y
-        elif name == 'z':
-            return self._v.z
-        else:
-            raise AttributeError(('Attribute "{}" not found in ' +
-                                  'UnitQuaternion class.').format(name))
-
-    def get_vector_part(self):
-        """Return a copy of the vector part of the quaternion."""
-        return self._v.copy()
-
-    vector_part = property(get_vector_part)
-
-    def get_scalar_part(self):
-        """Return the scalar part of the quaternion."""
-        return self._s
-
-    scalar_part = property(get_scalar_part)
-
     def __setattr__(self, name, val):
         if name in ['s', 'x', 'y', 'z']:
             raise AttributeError('Not allowed to set attribute "{}" in ' +
-                                 'UnitQuaternion'.format(name))
+                                 'Versor'.format(name))
         else:
             object.__setattr__(self, name, val)
 
-    def __getitem__(self, index):
-        if index == 0:
-            return self._s
-        else:
-            return self._v[index-1]
-
-    def __repr__(self):
-        return '<UnitQuaternion: [{:.5f}, ({:.5f}, {:.5f}, {:.5f})]>'.format(
-            self._s, *self._v._data)
-
-    def __copy__(self):
-        """Copy method for creating a copy of this UnitQuaternion."""
-        return UnitQuaternion(self)
-
-    def __deepcopy__(self, memo):
-        return self.__copy__()
-
-    def copy(self, other=None):
-        """Copy data from 'other' to self. If no argument given,
-        i.e. 'other==None', return a copy of this UnitQuaternion."""
-        if other is None:
-            return UnitQuaternion(self)
-        else:
-            self._s = other._s
-            self._v = other._v.copy()
-
     def __mul__(self, other):
         """Multiplication is interpreted by either transforming
-        (rotating) a Vector, ordinary UnitQuaternion multiplication, or
+        (rotating) a Vector, ordinary versor multiplication, or
         multiplication by scalar."""
         if type(other) == Vector:
             # Do a rotation of the vector
-            return (self * UnitQuaternion(0, other) * self.inverse)._v
-        elif type(other) == UnitQuaternion:
+            return (self * Versor(0, other) * self.inverse)._v
+        elif type(other) in (Versor, UnitQuaternion):
             # Ordinary quaternion multiplication
-            return UnitQuaternion(self._s * other._s - self._v * other._v,
+            return Versor(self._s * other._s - self._v * other._v,
                                   self._v.cross(other._v) +
                                   self._s * other._v + other._s * self._v)
         elif type(other) == m3d.Orientation:
-            return self * other.unit_quaternion
+            return self * other.versor
         # elif utils.is_num_type(other):
-        #     return UnitQuaternion(other * self._s, other * self._v)
+        #     return Versor(other * self._s, other * self._v)
         else:
             return NotImplemented
 
     def __rmul__(self, rother):
         # """Right-multiply by number. """
         # if utils.is_num_type(rother):
-        #     return UnitQuaternion(rother * self._s, rother * self._v)
+        #     return Versor(rother * self._s, rother * self._v)
         # else:
         return NotImplemented
 
     def __imul__(self, other):
         """In-place multiply."""
-        if other in [m3d.Orientation, UnitQuaternion]:
-            new_quat = self * other
-            self._s = new_quat._s
-            self._v = new_quat._v
+        if other in [m3d.Orientation, Versor, UnitQuaternion]:
+            new_versor = self * other
+            self._s = new_versor._s
+            self._v = new_versor._v
         else:
             return NotImplemented
         return self
 
-    def __ipow__(self, x):
-        """In-place exponentiation of this quaternion to the power of
-        'x'."""
-        if abs(1 - abs(self._s)) < utils.sqrt_eps:
-            self._s = utils.flt(1)
-            self._v = Vector(0, 0, 0)
-        else:
-            theta = np.arccos(self._s)
-            sintheta = np.sin(theta)
-            logv = theta / sintheta * self._v
-            alpha = x * logv.length
-            v = logv.normalized
-            self._s = np.cos(alpha)
-            self._v = np.sin(alpha) * v
-        return self
-
-    def __pow__(self, x):
-        """Return this quaternion to the power of 'x'."""
-        q = UnitQuaternion(self)
-        q **= x
-        return q
-
-    def negate(self):
-        """In-place negation, i.e. flip between small- and large-norm
-        representation of the same rotation.
-        """
-        self._s = -self._s
-        self._v = -self._v
-
-    def __neg__(self):
-        """Return the negative quaternion to self."""
-        q = UnitQuaternion(self)
-        q.negate()
-        return q
-
+    # Inversion is a simple conjugation
+    invert = Quaternion.conjugate
+    
     def get_ang_norm(self, shortest=True):
         """Return the angular norm, i.e. the angular rotation, of this
-        quaternion. If 'shortest' is True, the default, the shortest
+        versor. If 'shortest' is True, the default, the shortest
         norm is returned, i.e. the minimal geodesic path length
-        from the unit element to this unit quaternion.
+        from the unit element to this unit versor.
         """
         if shortest is None:
             return 2*np.arccos(self._s)
@@ -254,10 +413,10 @@ class UnitQuaternion(object):
     ang_norm = property(get_ang_norm)
 
     def ang_dist(self, other, shortest=True):
-        """Compute the rotation angle distance to the 'other' quaternion. If
+        """Compute the rotation angle distance to the 'other' versor. If
         'shortest' is True, the default, the shortest distance is
         returned, i.e. the minimal geodesic path length from the
-        'other' unit quaternion to this unit quaternion. 'shortest'
+        'other' versor to this versor. 'shortest'
         may be False, in which case the longest angular distance is
         returned. If 'shortest' is None, the natural angular distance
         is computed.
@@ -266,7 +425,7 @@ class UnitQuaternion(object):
 
     def dist_squared(self, other):
         """Compute the square of the usual quaternion metric distance to the
-        'other' quaternion.
+        'other' versor.
         """
         return (self._s - other._s)**2 + (self._v - other._v).length_squared
 
@@ -277,16 +436,14 @@ class UnitQuaternion(object):
 
     def get_axis_angle(self):
         """Return an '(axis, angle)' pair representing the orientation of this
-        quaternion. Ref
+        versor. Ref
         https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Recovering_the_axis-angle_representation
         """
-        vlen = self._v.length
-        axis = self._v / vlen
-        angle = 2 * np.arctan2(vlen, self._s)
-        return (axis, angle)
+        angle = 2 * np.arctan2(1, self._s)
+        return (self._v.copy(), angle)
 
     def set_axis_angle(self, axisangle):
-        """Set this quaternion to the equivalent of the given axis
+        """Set this versor to the equivalent of the given axis
         and angle given in the ordered pair 'axisangle'."""
         axis, angle = axisangle
         if type(axis) != Vector:
@@ -302,13 +459,13 @@ class UnitQuaternion(object):
 
     def get_rotation_vector(self):
         """Return a rotation vector representing the rotation of this
-        quaternion."""
+        versor."""
         axis, angle = self.axis_angle
         return (angle * axis)._data
 
     def set_rotation_vector(self, rot_vec):
-        """Set this quaternion to the equivalent of the given
-        rotation vector 'w'."""
+        """Set this versor to the equivalent of the given
+        rotation vector 'rot_vec'."""
         if type(rot_vec) != Vector:
             rot_vec = Vector(rot_vec)
         angle = rot_vec.length
@@ -323,10 +480,10 @@ class UnitQuaternion(object):
     rotation_vector = property(get_rotation_vector, set_rotation_vector)
 
     def get_orientation(self):
-        """Return an orientation object representing the same rotation
-        as this quaternion. The method is taken from
-        http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation."""
-        # Return an Orientation representing this quaternion
+        """Return an Orientation object representing the same rotation as this
+        versor. The method is taken from
+        http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation.
+        """
         self.normalize()
         s = self._s
         v = self._v
@@ -343,7 +500,7 @@ class UnitQuaternion(object):
             ]))
 
     def set_orientation(self, orient, positive=True):
-        """Set this quaternion to represent the given orientation matrix in
+        """Set this versor to represent the given orientation matrix in
         'orient'. The used method should be robust;
         cf. http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation.
         The mentioned method from wikipedia has problems with certain
@@ -381,113 +538,36 @@ class UnitQuaternion(object):
 
     orientation = property(get_orientation, set_orientation)
 
-    def get_norm(self):
-        """Return the norm of this quaternion."""
-        return np.sqrt(self.norm_squared)
 
-    norm = property(get_norm)
+# Backwards compatibility
+UnitQuaternion = Versor
 
-    def get_norm_squared(self):
-        """Return the square of the norm of this quaternion."""
-        return self._s**2 + self._v.length_squared
-
-    norm_squared = property(get_norm_squared)
-
-    def conjugate(self):
-        """In-place conjugation of this quaternion."""
-        self._v = -self._v
-
-    def get_conjugated(self):
-        """Return a quaternion which is the conjugated of this
-        quaternion.
-        """
-        qc = self.copy()
-        qc.conjugate()
-        return qc
-
-    conjugated = property(get_conjugated)
-
-    def normalize(self):
-        """Normalize this quaternion. """
-        n = self.norm
-        if abs(n) < 1e-10:
-            self._s = utils.flt(1)
-            self._v = Vector(0.0, 0.0, 0.0)
-        else:
-            ninv = 1.0 / n
-            self._s *= ninv
-            self._v *= ninv
-
-    def get_normalized(self):
-        """Return a normalised version of this quaternion. """
-        q = UnitQuaternion(self)
-        q.normalize()
-        return q
-
-    normalized = property(get_normalized)
-
-    def invert(self):
-        """In-place inversion of this quaternion. """
-        # n2 = self.norm_squared
-        self.conjugate()
-        # self *= 1 / n2
-
-    def get_inverse(self):
-        """Return an inverse of this quaternion."""
-        qi = self.copy()
-        qi.invert()
-        return qi
-
-    inverse = property(get_inverse)
-
-    def get_array(self):
-        """Return an ndarray with the fundamental data
-        of the UnitQuaternion.  The layout is as described by the
-        UnitQuaternion.list property.
-        """
-        return np.array(self.list)
-
-    array = property(get_array)
-
-    def get_list(self):
-        """Return the fundamental data of the UnitQuaternion as a
-        list. The scalar part is placed in the first element, at index
-        0, and the vector data at the remainder, slice [1:].
-        """
-        return [self._s]+self._v.list
-
-    list = property(get_list)
-
-    def get_matrix(self):
-        """Return a 4x4 matrix representation of the UnitQuaternion. See
-        http://en.wikipedia.org/wiki/Quaternion#Matrix_representations.
-        """
-        a, b, c, d = self._s, self._v.x, self._v.y, self._v.z
-        return np.array([[a, b, c, d],
-                         [-b, a, -d, c],
-                         [-c, d, a, -b],
-                         [-d, -c, b, a]])
-
-    matrix = property(get_matrix)
-
-
-class Quaternion(UnitQuaternion):
-    def __init__(self, *args, **kwargs):
-        utils._deprecation_warning(
-            'The class currently called "Quaternion" is in fact a unit ' +
-            'quaternion, and will in the future be called "UnitQuaternion", ' +
-            'also found in the current code base. Please update your code.')
-        UnitQuaternion.__init__(self, *args, **kwargs)
+# class UnitQuaternion(Versor):
+#     def __init__(self, *args, **kwargs):
+#         utils._deprecation_warning(
+#             'The class currently called "UnitQuaternion" is in fact a ' +
+#             'a Versor. It is implemented by the class "Versor", ' +
+#             'also found in the current code base. Please update your code.')
+#         Versor.__init__(self, *args, **kwargs)
 
 
 def _test():
     print('Here should come a norm-warning:')
-    UnitQuaternion(1, 2, 3, 4, norm_warn=True)
+    Versor(1, 2, 3, 4, norm_warn=True)
     print('Here should be *no* norm-warning:')
-    UnitQuaternion(1, 2, 3, 4, norm_warn=False)
+    Versor(1, 2, 3, 4, norm_warn=False)
     print('Done')
-    print('Test for closeness of rotation vectors (logarithm).')
-    q = UnitQuaternion(m3d.Vector(0, 0, -1/2 * np.pi))
-    p = UnitQuaternion(m3d.Vector(0, 0, 3/2 * np.pi))
-    assert(np.all(np.isclose(q.rotation_vector,p.rotation_vector))
-           or np.all(np.isclose(q.rotation_vector, (-p).rotation_vector)))
+    print('Testing power operator on Versor')
+    assert(np.allclose((Versor(Vector(1, 0, 0))**2).rotation_vector,
+                       np.array([2, 0, 0])))
+    print('Test for closeness of long and short rotation vectors (logarithm).')
+    q = Versor(m3d.Vector(0, 0, -1/2 * np.pi))
+    p = Versor(m3d.Vector(0, 0, 3/2 * np.pi))
+    assert(np.allclose(q.rotation_vector, p.rotation_vector)
+           or np.allclose(q.rotation_vector, (-p).rotation_vector))
+    print('Test multiplicative inverse')
+    q = Quaternion(1,2,3,4)
+    assert(q * q.inverse == Quaternion())
+    print('Testing versor transformation of vector')
+    assert(Versor(m3d.Vector(0, 0, 3/2 * np.pi)) * m3d.Vector(1, 0, 0)
+           == m3d.Vector(0, -1, 0))
