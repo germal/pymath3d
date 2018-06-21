@@ -64,7 +64,11 @@ class Quaternion(object):
                                  .format(name, self.__class__.__name__))
 
     def __setattr__(self, name, val):
-        object.__setattr__(self, name, val)
+        if name in ['s', 'x', 'y', 'z']:
+            raise AttributeError(('Not allowed to set attribute "{}" directly in ' +
+                                  'class "{}"').format(name, self.__class__.__name__))
+        else:
+            object.__setattr__(self, name, val)
 
     def __getitem__(self, index):
         if index == 0:
@@ -348,13 +352,6 @@ class Versor(Quaternion):
                       .format(self.norm-1))
             self.normalize()
 
-    def __setattr__(self, name, val):
-        if name in ['s', 'x', 'y', 'z']:
-            raise AttributeError('Not allowed to set attribute "{}" in ' +
-                                 'Versor'.format(name))
-        else:
-            object.__setattr__(self, name, val)
-
     def __mul__(self, other):
         """Multiplication is interpreted by either transforming
         (rotating) a Vector, ordinary versor multiplication, or
@@ -436,11 +433,16 @@ class Versor(Quaternion):
 
     def get_axis_angle(self):
         """Return an '(axis, angle)' pair representing the orientation of this
-        versor. Ref
+        versor. References:
         https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Recovering_the_axis-angle_representation
+        https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation#Unit_quaternions
         """
-        angle = 2 * np.arctan2(1, self._s)
-        return (self._v.copy(), angle)
+        vlen = self._v.length
+        if np.isclose(vlen, 0.0):
+            return (m3d.Vector(), 0.0)
+        else:
+            angle = 2 * np.arctan2(vlen, self._s)
+            return (self._v/vlen, angle)
 
     def set_axis_angle(self, axisangle):
         """Set this versor to the equivalent of the given axis
