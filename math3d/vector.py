@@ -359,7 +359,6 @@ class Vector(object):
     def __truediv__(self, other):
         """Division with a scalar, 'other'. """
         if utils.is_num_type(other):
-            print('Other: ', other)
             if np.isclose(other, 0.0):
                 raise ZeroDivisionError('In division of vector by scalar')            
             return Vector(1.0 / other * self._data)
