@@ -16,6 +16,7 @@ __status__ = "Development"
 import math3d as m3d
 import numpy as np
 
+from . import plane
 
 class Line(object):
     """A line class."""
@@ -66,3 +67,26 @@ class Line(object):
         """Return the projection of 'p' onto this line."""
         p2p = (self._p - p)
         return p + p2p - (self._ud * p2p) * self._ud
+
+    def projected_line(self, l):
+        """Return the projection of 'l' onto this line. I.e. return the point
+        in this line, closest to 'l'. If the lines are parallel, the
+        origin point of this line is returned.
+        """
+        # Check if the lines are parallel
+        if (1 - self._ud * l._ud) < 10 * m3d.utils.eps:
+            return self.point
+        # Create the plane splanned by the common normal and the direction of the other line direction
+        cn = self._ud.cross(l._ud)
+        pl = plane.Plane(pn_pair=(l._p, cn.cross(l._ud)))
+        # Get the intersection of this line to the plane
+        return pl.line_intersection(self)
+
+
+def _test():
+    # Simple test of projected line.
+    l1 = Line(point=(0,1,1), direction=(0,0.1,1))
+    l2 = Line(point=(1,1,0), direction=(0,1,0))
+    pl = l1.projected_line(l2)
+    print(pl)
+    assert((pl-l1.projected_point(pl)).length < 10 * m3d.utils.eps )
