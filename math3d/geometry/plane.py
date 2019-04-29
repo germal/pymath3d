@@ -25,12 +25,13 @@ class Plane(object):
         arguments:
 
         * 'plane_vector': A normalized plane vector. The normal will
-          be pointing away from the origo. If kw-argument
-          'origo_inside' is given, this will determine the direction
-          of the plane normal; otherwise origo will be set inside.
+        be pointing away from the origo. If kw-argument 'origo_inside'
+        is given, this will determine the direction of the plane
+        normal; otherwise origo will be set inside.
 
         * 'pn_pair': An ordered sequence for creating a reference
-        point and a normal vector. The normal
+        point and a normal vector. The normal and point are conserved
+        as they are given.
 
         * 'points': A set of at least three points for fitting a
         plane.
@@ -52,8 +53,10 @@ class Plane(object):
             (self._p, self._n) = [m3d.Vector(e) for e in kwargs['pn_pair']]
             # # Override a given origo inside.
             self._origo_inside = (self._p * self._n) > 0
-            # # Make point a 'minimal' point on the plane, i.e. the
-            # # projection of origo in the plane.
+            # Ensure unit normal
+            #self._n.normalize()
+            # Make point a 'minimal' point on the plane, i.e. the
+            # projection of origo in the plane.
             self._p = (self._p * self._n) * self._n
         elif 'points' in kwargs:
             self.fit_plane(kwargs['points'])
@@ -106,6 +109,10 @@ class Plane(object):
     def normal(self):
         return self._n
 
+    @property
+    def unit_normal(self):
+        return self._n.normalized
+
     def get_coeffs(self):
         """Return the four coefficients of the plane."""
         return list(self._n) + [self.dist([0, 0, 0])]
@@ -139,11 +146,12 @@ class Plane(object):
             point = m3d.Vector(point)
         if not isinstance(normal, m3d.Vector):
             normal = m3d.Vector(normal)
-        # // Origo projection on plane
+        normal.normalize()
+        # Origo projection on plane
         p0 = (point * normal) * normal
-        # // Square of offset from origo
+        # Square of offset from origo
         d2 = p0.length_squared
-        # // return the plane vector
+        # return the plane vector
         return p0 / (d2)
 
     def pv_to_pn(self, pv):
@@ -164,18 +172,29 @@ class Plane(object):
             point = m3d.Vector(point)
         return point - self._n * (point - self._p) * self._n
 
-    def line_intersection(self, other):
-        """Compute the intersection with the given line."""
-        if type(other) != m3d.geometry.Line:
+    def line_intersection(self, line):
+        """Compute the intersection with the given 'line'. If the line is
+        parallel to the plane, None is returned, irregardless of
+        whether the line is lying in the plane. See
+        http://geomalgorithms.com/a05-_intersect-1.html. In-line
+        comments use terminology from
+        https://en.wikipedia.org/wiki/Skew_lines#Nearest_Points.
+        """
+        if type(line) != m3d.geometry.Line:
             raise Exception(
                 'Method only implemented for math3d.geometry.Line object')
-        (lp, ld) = other._p, other._d
-        ndd = self._n * ld
-        if np.abs(ndd) < utils.eps:
+        p0 = line._p  # p1
+        u = line._ud  # d1
+        n = self._n  # d2 x (d1 x d2) = n2
+        v0 = self._p  # p2
+        w = p0 - v0  # p1 - p2
+        nu = n * u
+        if np.abs(nu) < 10 * utils.eps:
+            # The line is parallel to the plane
             return None
         else:
-            dist = (self._p - lp) * self._n / ndd
-            return dist * ld + lp
+            si = (n * -w) / nu  # (p2 - p1) * n2 / (d1 * n2)
+            return p0 + si * u  # p1 + si * d1
 
     def plane_intersection(self, other):
         """Find the line of intersection with 'other' plane. Method found in
@@ -215,13 +234,19 @@ def _test():
             < utils.eps)
     pln0 = Plane(plane_vector=(1, 0, 0))
     pln1 = Plane(plane_vector=(0, 1, 0))
-    # Test for intersection between planes
+    # Test plane-plane intersection
     line = pln0.intersection(pln1)
-    assert line.point.x == 1 and line.point.y == 1
-    assert np.abs(line.direction * m3d.Vector.ez) == 1
+    assert(line.point.x == 1 and line.point.y == 1)
+    assert(np.abs(line.direction * m3d.Vector.ez) == 1)
     # Test for intersection with unsupported object
     try:
         pln0.intersection(m3d.Vector.ex)
     except NotImplementedError as nie:
         print('Caught expected exception from intersection of plane ' +
               'with vector. "{}"'.format(str(nie)))
+    from .line  import Line
+    # Test line-plane intersection
+    line = Line(pd_pair=((0, 0, 1), (0, 1, -0.01)))
+    plane = Plane(pn_pair=((0, 0, 0), (0, 0, 2)))
+    lpi = plane.intersection(line)
+    assert(lpi.x == 0 and lpi.y == 100 and lpi.z == 0)
