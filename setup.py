@@ -10,6 +10,7 @@ setup (
     url = 'http://git.automatics.dyndns.dk/?p=pymath3d.git',
     packages = ['math3d', 'math3d.interpolation', 'math3d.reference_system', 'math3d.dynamics', 'math3d.geometry'],
     provides = ['math3d'],
+    install_requires = ['numpy'],
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
