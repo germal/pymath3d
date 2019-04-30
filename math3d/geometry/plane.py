@@ -5,11 +5,11 @@ Module for Plane class.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2013-2016"
+__copyright__ = "Morten Lind 2013-2019"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
-__email__ = "morten@lind.dyndns.dk"
+__email__ = "morten@lind.fairuse.org"
 __status__ = "Development"
 
 
