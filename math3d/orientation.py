@@ -6,11 +6,11 @@ represented internally by an orthogonal 3x3 matrix.
 """
 
 __author__ = "Morten Lind"
-__copyright__ = "Morten Lind 2012-2018"
+__copyright__ = "Morten Lind 2012-2019"
 __credits__ = ["Morten Lind"]
 __license__ = "GPLv3"
 __maintainer__ = "Morten Lind"
-__email__ = "morten@lind.dyndns.dk"
+__email__ = "morten@lind.fairuse.org"
 __status__ = "Production"
 
 import numpy as np
@@ -310,8 +310,9 @@ class Orientation(object):
         return m3d.Versor(self).axis_angle
 
     def set_axis_angle(self, ax_ang):
-        """Set this orientation to the equivalent to rotation of
-        'angle' around 'axis'.
+        """Set this orientation to the equivalent to rotation of 'angle'
+        around 'axis'. Only the direction of the 'axis' is used, so it
+        may have any length greater than zero.
         """
         axis, angle = ax_ang
         if type(axis) == Vector:
@@ -725,6 +726,13 @@ class Orientation(object):
         oaa = Orientation()
         oaa.axis_angle = (axis, angle)
         return oaa
+
+    @classmethod
+    def new_rotation_vector(self, rotation_vector):
+        """Create and return a new orientation that represents the given
+        'rotation_vector', given as a sequence of three numbers.
+        """
+        return Orientation(rotation_vector)
 
 
 def _test():
