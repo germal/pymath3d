@@ -59,7 +59,7 @@ class Plane(object):
             # projection of origo in the plane.
             self._p = (self._p * self._n) * self._n
         elif 'points' in kwargs:
-            self.fit_plane(kwargs['points'])
+            self.fit_points(kwargs['points'])
         elif 'coeffs' in kwargs:
             self.coeffs = kwargs['coeffs']
         else:
@@ -127,7 +127,7 @@ class Plane(object):
 
     coeffs = property(get_coeffs, set_coeffs)
 
-    def fit_plane(self, points):
+    def fit_points(self, points):
         """Compute the plane vector from a set of points. 'points'
         must be an array of row position vectors, such that
         points[i] is a position vector."""
@@ -137,6 +137,14 @@ class Plane(object):
         min_ev_i = np.where(eigen[0] == min(eigen[0]))[0][0]
         normal = eigen[1].T[min_ev_i]
         (self._p, self._n) = (m3d.Vector(centre), m3d.Vector(normal))
+
+    @classmethod
+    def new_fitted_points(cls, points):
+        return cls(points=points)
+
+    def fit_plane(self, points):
+        print('Deprecation warning: fit_plane -> fit_points')
+        self.fit_points(points)
 
     @classmethod
     def pn_to_pv(cls, point, normal):

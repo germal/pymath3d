@@ -34,6 +34,10 @@ class Line(object):
 
         * 'point0', 'point1': Two points defining the line, in named
          arguments.
+
+        * 'points': A set of at least two points is used for
+        PCA-identification of the direction of the line, and where the
+        line point is chosen as the average position.
         """
 
         if 'point_direction' in kwargs:
@@ -48,12 +52,18 @@ class Line(object):
         elif 'point0' in kwargs and 'point1' in kwargs:
             self._p = m3d.Vector(kwargs['point0'])
             self._d = m3d.Vector(kwargs['point1']) - self._p
+        elif 'points' in kwargs:
+            self.fit_points(kwargs['points'])
         else:
             raise Exception(
                 'Can not create Line object on given arguments: "{}"'
                 .format(kwargs))
         # Create the unit direction vector
         self._ud = self._d.normalized
+
+    def __repr__(self):
+        return '<Line: p=[{:.3f}, {:.3f}, {:.3f}] ud=[{:.3f}, {:.3f}, {:.3f}]>'.format(
+            *tuple(self._p), *tuple(self._ud))
 
     @property
     def point(self):
@@ -67,6 +77,21 @@ class Line(object):
     def unit_direction(self):
         return m3d.Vector(self._ud)
 
+    def fit_points(self, points):
+        """Compute the line from a set of points. 'points'
+        must be an array of row position vectors, such that
+        points[i] is a position vector."""
+        points = np.array(points)
+        centre = np.sum(points, axis=0)/len(points)
+        eigen = np.linalg.eig(np.cov(points.T))
+        max_ev_i = np.where(eigen[0] == max(eigen[0]))[0][0]
+        direction = eigen[1].T[max_ev_i]
+        self._p = m3d.Vector(centre)
+        self._d = self._ud = m3d.Vector(direction)
+
+    @classmethod
+    def new_fitted_points(cls, points):
+        return cls(points=points)
 
     def projected_point(self, p):
         """Return the projection of 'p' onto this line."""
@@ -116,5 +141,14 @@ def _test():
     l1 = Line(point=(0, 1, 1), direction=(0, 0.1, 1))
     l2 = Line(point=(1, 1, 0.1), direction=(0, 1, 0))
     pl = l1.projected_line(l2)
-    print(pl)
-    assert((pl-l1.projected_point(pl)).length < 10 * m3d.utils.eps )
+    # print('Projected line: {}'.format(str(pl)))
+    assert((pl-l1.projected_point(pl))
+           .length < 10 * m3d.utils.eps)
+    # Test line fitting.
+    fl = Line.new_fitted_points([[1, 1, 1],
+                                 [2, 2, 2],
+                                 [3, 3, 3]])
+    # print('Fitted line: {}'.format(str(fl)))
+    assert(fl.point == m3d.Vector(2, 2, 2))
+    assert(1.0 - np.abs(fl.direction * m3d.Vector(1, 1, 1).normalized)
+           < 10 * m3d.utils.eps)
