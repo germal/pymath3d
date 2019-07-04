@@ -3,7 +3,7 @@ from distutils.command.install_data import install_data
 
 setup(
     name='math3d',
-    version='3.3.4',
+    version='3.3.5',
     description='3D Special Euclidean mathematics package for Python.',
     author='Morten Lind',
     author_email='morten@lind.fairuse.org',
@@ -20,5 +20,5 @@ setup(
         'Topic :: Scientific/Engineering',
     ],
     license='GNU General Public License v3',
-    data_files=[('share/doc/pymath3d/', ['README.md', 'COPYING'])]
+    data_files=[('share/doc/pymath3d', ['README.md', 'COPYING'])]
 )
