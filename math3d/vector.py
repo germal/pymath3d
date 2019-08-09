@@ -346,6 +346,9 @@ class Vector(object):
             return np.dot(self._data, other._data)
         elif utils.is_num_type(other):
             return Vector(self._data * other)
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            return Vector(self._data * other)
         elif utils.is_sequence(other):
             # Assume a sequence of objects that may be multiplied
             # WARNING: v * [1,2,3] == [1*v, 2*v, 3*v] !
