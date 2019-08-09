@@ -348,6 +348,7 @@ class Vector(object):
             return Vector(self._data * other)
         elif utils.is_sequence(other):
             # Assume a sequence of objects that may be multiplied
+            # WARNING: v * [1,2,3] == [1*v, 2*v, 3*v] !
             return [self * o for o in other]
         else:
             return NotImplemented
