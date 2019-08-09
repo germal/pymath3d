@@ -472,6 +472,7 @@ class Orientation(object):
                 other.reshape((3, 2), order='F')
                 ).reshape(6, order='F')
         elif utils.is_sequence(other):
+            # Assume a sequence of objects that may be multiplied
             return [self * o for o in other]
         else:
             return NotImplemented
@@ -775,4 +776,12 @@ def _test_array_property():
     print(o.repr_error)
     o.orthonormalize()
     print(o.repr_error)
-    
+
+
+def _test_vectorized_multiplication():
+    # Test multiplication of a list
+    o = Orientation.new_rot_z(np.pi/2)
+    vs = [Vector(1, 0, 0), Vector(0, 1, 0)]
+    rs = o * vs
+    assert(rs[0] == o * vs[0])
+    assert(rs[1] == o * vs[1])
