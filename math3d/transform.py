@@ -252,7 +252,8 @@ class Transform(object):
         elif type(other) == np.ndarray and other.shape == (3,):
             return np.dot(self._o._data, other)+self._v._data
         elif utils.is_sequence(other):
-            return list(map(self.__mul__, other))
+            # Assume a sequence of objects that may be multiplied
+            return [self * o for o in other]
         else:
             return NotImplemented
 
@@ -352,3 +353,13 @@ def _test():
     print(t*cx)
     it = t.inverse
     print(t*it)
+
+
+def _test_vectorized_multiplication():
+    # Test multiplication of a list
+    t = Transform(Orientation.new_rot_z(np.pi/2), Vector(1, 0, 0))
+    vs = [Vector(1, 0, 0), Vector(0, 1, 0)]
+    rs = t * vs
+    assert(rs[0] == t * vs[0])
+    assert(rs[1] == t * vs[1])
+    

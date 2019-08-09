@@ -341,13 +341,22 @@ class Vector(object, metaclass=_UnitVectors):
         position. If both are free or both are positions, the new
         should be free."""
         if type(other) == Vector:
-            return Vector(np.subtract(self._data, other._data))
+            return Vector(self._data - other._data)
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            return Vector(self._data - other)
+        elif utils.is_sequence(other):
+            # Assume a sequence of objects that may be multiplied
+            return [self - o for o in other]
         else:
             return NotImplemented
 
     def __isub__(self, other):
         if type(other) == Vector:
             self._data -= other._data
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            self._data -= other
         else:
             return NotImplemented
         return self
@@ -358,7 +367,14 @@ class Vector(object, metaclass=_UnitVectors):
         if type(other) == Vector:
             return np.dot(self._data, other._data)
         elif utils.is_num_type(other):
-            return Vector(np.dot(self._data, other))
+            return Vector(self._data * other)
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            return Vector(self._data * other)
+        elif utils.is_sequence(other):
+            # Assume a sequence of objects that may be multiplied
+            # WARNING: v * [1,2,3] == [1*v, 2*v, 3*v] !
+            return [self * o for o in other]
         else:
             return NotImplemented
 
@@ -392,6 +408,12 @@ class Vector(object, metaclass=_UnitVectors):
         """Return the sum of this and the 'other' vector."""
         if type(other) == Vector:
             return Vector(self._data + other._data)
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            return Vector(self._data + other)
+        elif utils.is_sequence(other):
+            # Assume a sequence of objects that may be added
+            return [self + o for o in other]
         else:
             return NotImplemented
             # raise utils.Error('__add__ : Could not add non-vector')
@@ -400,6 +422,9 @@ class Vector(object, metaclass=_UnitVectors):
         """In-place add the 'other' vector to this vector."""
         if type(other) == Vector:
             self._data += other._data
+        elif type(other) == np.ndarray and other.shape == (3,):
+            # Other is given as a triplet in ndarray
+            self._data += other
         else:
             return NotImplemented
             # raise utils.Error('__iadd__ : Could not add non-vector')
@@ -477,3 +502,19 @@ def _test_projection():
     if (v0prj - v1).length > utils.eps:
         return False
     return True
+
+
+def _test_vectorized_operations():
+    # Test multiplication of a list
+    v = Vector(1, 0, 0)
+    vs = [Vector(1, 0, 0), Vector(0, 1, 0)]
+    rms = v * vs
+    assert(rms[0] == v * vs[0])
+    assert(rms[1] == v * vs[1])
+    ras = v + vs
+    assert(ras[0] == v + vs[0])
+    assert(ras[1] == v + vs[1])
+    rss = v + vs
+    assert(rss[0] == v + vs[0])
+    assert(rss[1] == v + vs[1])
+    
