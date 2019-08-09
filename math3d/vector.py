@@ -18,7 +18,29 @@ import numpy as np
 from . import utils
 
 
-class Vector(object):
+class _UnitVectors(type):
+
+    @property
+    def e0(self):
+        return Vector(1, 0, 0)
+    ex = e0
+
+    @property
+    def e1(self):
+        return Vector(0, 1, 0)
+    ey = e1
+
+    @property
+    def e2(self):
+        return Vector(0, 0, 1)
+    ez = e2
+
+    @property
+    def unit_vectors(self):
+        return [Vector.ex, Vector.ey, Vector.ez]
+
+
+class Vector(object, metaclass=_UnitVectors):
     """A Vector is a 3D vector (member of R3) with standard Euclidian
     operations."""
 
@@ -398,13 +420,7 @@ class Vector(object):
         return v
 
 
-# Unit Vectors
-Vector.ex = Vector.e0 = Vector(1, 0, 0)
-Vector.ey = Vector.e1 = Vector(0, 1, 0)
-Vector.ez = Vector.e2 = Vector(0, 0, 1)
-Vector.unit_vectors = [Vector.ex,
-                       Vector.ey,
-                       Vector.ez]
+
 
 
 def random_unit_vector():
